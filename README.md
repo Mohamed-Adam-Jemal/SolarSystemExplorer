@@ -7,4 +7,4 @@ gradlew.bat run     # Windows
 
 ## Branch Rules
 - Never push directly to main
-- Create a feature branch, open a PR, get 1 approval to merge
+- Create a feature branch then open a PR to merge
