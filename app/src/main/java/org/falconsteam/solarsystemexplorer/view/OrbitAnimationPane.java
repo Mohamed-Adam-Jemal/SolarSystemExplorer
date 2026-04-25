@@ -13,6 +13,9 @@ import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
+import javafx.scene.control.Slider;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -54,7 +57,6 @@ public class OrbitAnimationPane extends Pane {
             -fx-background-radius: 6;
             -fx-min-width: 40px;
             -fx-min-height: 40px;
-            
         """;
 
         zoomIn.setStyle(btnStyle);
@@ -65,10 +67,30 @@ public class OrbitAnimationPane extends Pane {
         zoomOut.setOnAction(e   -> zoomFactor = Math.max(ZOOM_MIN, zoomFactor / 1.5));
         zoomReset.setOnAction(e -> zoomFactor = 1.0);
 
-        VBox controls = new VBox(6, zoomIn, zoomOut, zoomReset);
-        controls.setAlignment(Pos.CENTER);
+        // ── Speed Control ─────────────────────────────────────
+        Label speedLabel = new Label("Speed");
+        speedLabel.setStyle("-fx-text-fill: #ffffff99; -fx-font-size: 11px;");
+
+        Slider speedSlider = new Slider(0.01, 1.0, 0.1);
+        speedSlider.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        speedSlider.setPrefHeight(100);
+        speedSlider.setStyle("-fx-control-inner-background: #ffffff22;");
+        speedSlider.valueProperty().addListener((obs, o, n) -> setSpeedMultiplier(n.doubleValue()));
+
+        Label speedValue = new Label("1×");
+        speedValue.setStyle("-fx-text-fill: #ffffff99; -fx-font-size: 10px;");
+        speedSlider.valueProperty().addListener((obs, o, n) ->
+            speedValue.setText(String.format("%.1f×", n.doubleValue() / 0.1))
+        );
 
         // ── Layout ────────────────────────────────────────────
+        Separator sep = new Separator();
+        sep.setStyle("-fx-background-color: #ffffff22;");
+        sep.setPrefWidth(30);
+
+        VBox controls = new VBox(6, zoomIn, zoomOut, zoomReset, sep, speedLabel, speedSlider, speedValue);
+        controls.setAlignment(Pos.CENTER);
+
         getChildren().addAll(canvas, controls);
 
         canvas.widthProperty().bind(widthProperty());
@@ -91,9 +113,9 @@ public class OrbitAnimationPane extends Pane {
         starX    = new double[STAR_COUNT];
         starY    = new double[STAR_COUNT];
         starSize = new double[STAR_COUNT];
-        Random rand = new Random(42); // fixed seed = always same stars, no flicker
+        Random rand = new Random(42);
         for (int i = 0; i < STAR_COUNT; i++) {
-            starX[i]    = rand.nextDouble();         // stored as 0-1 ratio of canvas size
+            starX[i]    = rand.nextDouble();
             starY[i]    = rand.nextDouble();
             starSize[i] = 0.8 + rand.nextDouble() * 1.5;
         }
@@ -151,7 +173,7 @@ public class OrbitAnimationPane extends Pane {
         gc.setFill(Color.web("#0a0a1a"));
         gc.fillRect(0, 0, w, h);
 
-        // ── Background Stars (zoom-independent) ───────────────
+        // ── Background Stars ──────────────────────────────────
         for (int i = 0; i < STAR_COUNT; i++) {
             double brightness = (i % 3 == 0) ? 0.9 : (i % 3 == 1) ? 0.6 : 0.4;
             gc.setFill(Color.color(1, 1, 1, brightness));
@@ -174,7 +196,6 @@ public class OrbitAnimationPane extends Pane {
                 double px    = calculator.calculateX(body.getDistanceFromSun(), angle);
                 double py    = calculator.calculateY(body.getDistanceFromSun(), angle);
 
-                // Fixed visual size — only position moves with zoom
                 int r = body.getDisplayRadius();
 
                 // Planet body
@@ -198,13 +219,11 @@ public class OrbitAnimationPane extends Pane {
     private void drawSun(double cx, double cy, CelestialBody sun) {
         int r = sun.getDisplayRadius();
 
-        // Outer glow layers
         gc.setFill(Color.web("#FFD70011"));
         gc.fillOval(cx - r * 3, cy - r * 3, r * 6, r * 6);
         gc.setFill(Color.web("#FFD70033"));
         gc.fillOval(cx - r * 2, cy - r * 2, r * 4, r * 4);
 
-        // Sun body
         gc.setFill(Color.web(sun.getColor()));
         gc.fillOval(cx - r, cy - r, r * 2, r * 2);
     }
