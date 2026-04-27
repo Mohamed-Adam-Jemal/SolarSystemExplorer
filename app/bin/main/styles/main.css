@@ -4,6 +4,18 @@
     -fx-font-family: "Segoe UI", sans-serif;
 }
 
+/* ── SplitPane ───────────────────────────────────────── */
+.split-pane {
+    -fx-background-color: #0b0c1a;
+    -fx-box-border: transparent;
+    -fx-padding: 0;
+}
+
+.split-pane-divider {
+    -fx-background-color: #1e2040;
+    -fx-padding: 0 1 0 1;
+}
+
 /* ── Sidebar ─────────────────────────────────────────── */
 .sidebar {
     -fx-background-color: #0d0e1f;
@@ -117,15 +129,6 @@
     -fx-text-fill: white;
 }
 
-.img-wrap {
-    -fx-background-color: #1a1d38;
-    -fx-background-radius: 20;
-    -fx-min-width: 40;
-    -fx-max-width: 40;
-    -fx-min-height: 40;
-    -fx-max-height: 40;
-}
-
 /* ── Badges ──────────────────────────────────────────── */
 .badge {
     -fx-font-size: 10px;
@@ -151,40 +154,31 @@
 /* ── Detail panel ────────────────────────────────────── */
 .detail-panel {
     -fx-background-color: #0b0c1a;
-    -fx-padding: 36 40 36 40;
+    -fx-padding: 28 32 28 32;
 }
 
-.detail-name {
-    -fx-font-size: 30px;
-    -fx-font-weight: bold;
-    -fx-text-fill: white;
+.detail-scroll > .viewport {
+    -fx-background-color: transparent;
 }
 
-.detail-badge {
-    -fx-font-size: 12px;
-    -fx-background-radius: 12;
-    -fx-padding: 4 14 4 14;
+.detail-scroll > .scroll-bar:vertical .thumb {
+    -fx-background-color: #2a2d50;
+    -fx-background-radius: 4;
 }
 
-.detail-about-label {
-    -fx-font-size: 10px;
-    -fx-text-fill: #3a4070;
-    -fx-font-weight: bold;
+.detail-scroll > .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
 }
 
-.detail-desc {
-    -fx-font-size: 14px;
-    -fx-text-fill: #8891c4;
-    -fx-wrap-text: true;
+.detail-scroll > .scroll-bar:vertical .increment-button,
+.detail-scroll > .scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
 }
 
-.detail-img-wrap {
-    -fx-background-color: #1a1d38;
-    -fx-background-radius: 80;
-    -fx-min-width: 160;
-    -fx-max-width: 160;
-    -fx-min-height: 160;
-    -fx-max-height: 160;
+.placeholder-text {
+    -fx-font-size: 16px;
+    -fx-text-fill: #2a2d50;
 }
 
 .divider {
@@ -194,46 +188,95 @@
     -fx-pref-height: 1;
 }
 
-.placeholder-text {
-    -fx-font-size: 16px;
-    -fx-text-fill: #2a2d50;
-}
-
-/* ── Stat cards ──────────────────────────────────────── */
-.stat-card {
-    -fx-background-color: #0f1128;
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
-    -fx-border-color: #1e2245;
-    -fx-border-width: 1;
-    -fx-padding: 16 24 16 24;
-    -fx-min-width: 160;
-}
-
-.stat-label {
-    -fx-font-size: 10px;
-    -fx-text-fill: #4a5280;
-}
-
-.stat-value {
-    -fx-font-size: 22px;
+/* ── Detail — hero ───────────────────────────────────── */
+.detail-name {
+    -fx-font-size: 26px;
     -fx-font-weight: bold;
     -fx-text-fill: white;
 }
 
-.stat-unit {
+.detail-badge {
     -fx-font-size: 11px;
+    -fx-background-radius: 10;
+    -fx-padding: 3 12 3 12;
+}
+
+.detail-desc {
+    -fx-font-size: 13px;
+    -fx-text-fill: #7a84b8;
+    -fx-wrap-text: true;
+    -fx-line-spacing: 2;
+}
+
+.detail-about-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #3a4070;
+    -fx-font-weight: bold;
+}
+
+/* ── Detail — tag pills ──────────────────────────────── */
+.tag-pill {
+    -fx-background-color: #1e2245;
+    -fx-text-fill: #8891c4;
+    -fx-padding: 2 9 2 9;
+    -fx-background-radius: 10;
+    -fx-font-size: 11px;
+}
+
+/* ── Detail — stats grid ─────────────────────────────── */
+.stat-key {
     -fx-text-fill: #4a5280;
+    -fx-font-size: 11px;
 }
 
-/* ── SplitPane ───────────────────────────────────────── */
-.split-pane {
-    -fx-background-color: #0b0c1a;
-    -fx-box-border: transparent;
-    -fx-padding: 0;
+.stat-val {
+    -fx-text-fill: #c8ccf0;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
 }
 
-.split-pane-divider {
-    -fx-background-color: #1e2040;
-    -fx-padding: 0 1 0 1;
+/* ── Detail — atmosphere bars ────────────────────────── */
+.atmo-bar-track {
+    -fx-background-color: #1a1d38;
+    -fx-background-radius: 3;
+}
+
+.atmo-bar-fill {
+    -fx-background-color: #3d6fa8;
+    -fx-background-radius: 3;
+}
+
+.atmo-pct-label {
+    -fx-text-fill: #4a5280;
+    -fx-font-size: 11px;
+}
+
+/* ── Detail — feature chips ──────────────────────────── */
+.feature-chip {
+    -fx-background-color: #13152b;
+    -fx-text-fill: #8891c4;
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #1e2245;
+    -fx-border-width: 1;
+    -fx-font-size: 11px;
+}
+
+/* ── Detail — missions ───────────────────────────────── */
+.mission-item {
+    -fx-text-fill: #7a84b8;
+    -fx-font-size: 12px;
+}
+
+/* ── Detail — fun facts ──────────────────────────────── */
+.fun-fact-item {
+    -fx-text-fill: #7a84b8;
+    -fx-font-size: 12px;
+    -fx-padding: 6 10 6 10;
+    -fx-background-color: #0d0e1f;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-border-color: #1e2245;
+    -fx-border-width: 1;
 }

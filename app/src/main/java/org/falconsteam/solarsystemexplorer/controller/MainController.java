@@ -1,4 +1,5 @@
 package org.falconsteam.solarsystemexplorer.controller;
+
 import java.util.List;
 
 import org.falconsteam.solarsystemexplorer.model.CelestialBody;
@@ -10,6 +11,7 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 
 public class MainController {
+
     private final MainView mainView;
     private final DetailView detailView;
     private final ObservableList<CelestialBody> allBodies;
@@ -18,7 +20,6 @@ public class MainController {
         this.mainView   = mainView;
         this.detailView = detailView;
 
-        // Use the passed list — no second load
         allBodies = FXCollections.observableArrayList(loaded);
         FilteredList<CelestialBody> filtered = new FilteredList<>(allBodies, b -> true);
         mainView.getListView().setItems(filtered);
@@ -33,7 +34,9 @@ public class MainController {
 
         // Selection → detail
         mainView.getListView().getSelectionModel().selectedItemProperty().addListener(
-            (obs, oldVal, newVal) -> { if (newVal != null) detailView.display(newVal); }
+            (obs, oldVal, newVal) -> {
+                if (newVal != null) detailView.display(newVal);
+            }
         );
     }
 }

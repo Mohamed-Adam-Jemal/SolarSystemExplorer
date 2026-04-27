@@ -24,18 +24,15 @@ public class App extends Application {
         DetailView         detailView = new DetailView();
         OrbitAnimationPane orbitPane  = new OrbitAnimationPane();
 
-        // Load data ONCE and share it
         List<CelestialBody> bodies = new PlanetDataLoader().loadAll();
-        new MainController(mainView, detailView, bodies);
+
+        MainController controller = new MainController(mainView, detailView, bodies);
         orbitPane.init(bodies);
 
-        // 3-panel layout
         SplitPane split = new SplitPane(mainView, orbitPane, detailView);
         split.setDividerPositions(0.22, 0.65);
 
-        // Get actual screen size
         Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
-
         Scene scene = new Scene(split, screenBounds.getWidth(), screenBounds.getHeight());
         scene.getStylesheets().add(
             getClass().getResource("/styles/main.css").toExternalForm()
