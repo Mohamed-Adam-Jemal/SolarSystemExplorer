@@ -10,7 +10,7 @@
 ### 1. Clone the repository
 ```bash
 git clone <repo-url>
-cd SolarSystemExplorer
+cd system-solar-explorer
 ```
 
 ### 2. Give permission to Gradle wrapper (Mac/Linux only)
