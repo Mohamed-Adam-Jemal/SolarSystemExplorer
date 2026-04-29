@@ -19,7 +19,7 @@ An interactive JavaFX desktop app for exploring our solar system — featuring r
 - 🔍 **Detail View** — Surface imagery, physical stats, and facts per body
 - ⚖️ **Compare Mode** — Side-by-side comparison of any two celestial bodies
 - 💾 **JSON-Driven Data** — Planet data is external and easy to extend
-- 🌟 **Full Coverage** — Sun, 8 planets, and Pluto with HD textures
+- 🌟 **Full Coverage** — Sun, 8 planets, and Pluto
 
 ---
 
@@ -45,7 +45,6 @@ Where you clone the project **matters**. Gradle and JavaFX will fail silently or
 
 - **Spaces** — e.g. `C:\Users\My Projects\solar...` ❌
 - **Special characters** — e.g. `é à ù ( ) & # %` ❌
-- **Non-ASCII / Arabic characters** — e.g. `C:\مشاريع\solar...` ❌
 
 **Use a short, clean path like:**
 
@@ -123,8 +122,7 @@ Drop the matching texture into `src/main/resources/images/` and you're done.
 
 ## 🌿 Branch Rules
 
-- Never push directly to `main`
-- Create a feature branch, then open a PR to merge
+- `main` branch is protected so create a feature branch, then open a PR to merge
 
 ```bash
 git checkout -b feature/your-feature-name
