@@ -21,6 +21,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
@@ -41,18 +42,11 @@ import javafx.util.Duration;
 /**
  * DetailView — right panel of the Solar System Explorer.
  *
- * Three internal modes:
- *   DETAIL     → planet info (slides in from right when a body is first selected)
- *   SELECTOR   → multi-select card list for comparison
- *   COMPARISON → wide GridPane panel where every row aligns perfectly
- *
- * Changes vs original:
- *  1. NO placeholder screen — panel is invisible until a body is selected.
- *     App.java controls visibility.  setOnFirstDisplay(Runnable) is called
- *     exactly once to let App know it should slide the panel in.
- *  2. Comparison view uses a single GridPane instead of parallel VBox columns,
- *     so stat rows are pixel-perfect aligned across all planet columns.
- *  3. setOnWidthChangeRequest callbacks still work exactly as documented.
+ * Four internal modes:
+ *   DETAIL      → planet info
+ *   SELECTOR    → multi-select card list for comparison
+ *   COMPARISON  → wide GridPane panel
+ *   CALCULATOR  → distance calculator between two bodies
  */
 public class DetailView extends BorderPane {
 
@@ -60,15 +54,12 @@ public class DetailView extends BorderPane {
     private final Pane overlay;
     private List<CelestialBody> allBodies;
 
-    // Called once when the very first body is displayed (App uses it to slide panel in)
     private Runnable onFirstDisplay = () -> {};
     private boolean firstDisplayFired = false;
 
-    // Callbacks to ask the parent layout to expand/restore this panel
     private Runnable onExpand  = () -> {};
     private Runnable onRestore = () -> {};
 
-    // Multi-select state
     private final List<CelestialBody> selectedForComparison = new ArrayList<>();
 
     // ── Interstellar palette ──────────────────────────────
@@ -80,32 +71,30 @@ public class DetailView extends BorderPane {
     private static final String GOLD_DIM   = "rgba(255,213,79,0.12)";
     private static final String GOLD_GLOW  = "rgba(255,213,79,0.40)";
     private static final String RED_SOFT   = "rgba(239,154,154,0.90)";
+    private static final String PURPLE     = "#c084fc";
+    private static final String PURPLE_DIM = "rgba(192,132,252,0.12)";
     private static final String BG_CARD    = "rgba(255,255,255,0.035)";
     private static final String BG_CARD_H  = "rgba(79,195,247,0.07)";
     private static final String BG_SEL     = "rgba(79,195,247,0.13)";
     private static final String BORDER_SEL = "rgba(79,195,247,0.80)";
     private static final String DIVIDER    = "rgba(255,255,255,0.08)";
 
-    // Fixed row height for comparison grid (stats rows)
     private static final double STAT_ROW_H = 44;
 
     // ── Constructor ───────────────────────────────────────
     public DetailView(Pane overlay) {
         this.overlay = overlay;
         getStyleClass().add("detail-panel");
-        // No placeholder — panel starts empty and invisible (App controls translate)
     }
 
     public void setAllBodies(List<CelestialBody> bodies) {
         this.allBodies = bodies;
     }
 
-    /** Called once when the very first body is shown, so App can slide panel in. */
     public void setOnFirstDisplay(Runnable r) {
         this.onFirstDisplay = r != null ? r : () -> {};
     }
 
-    /** Wire parent layout callbacks so DetailView can request expand/shrink. */
     public void setOnWidthChangeRequest(Runnable expand, Runnable restore) {
         this.onExpand  = expand  != null ? expand  : () -> {};
         this.onRestore = restore != null ? restore : () -> {};
@@ -117,14 +106,12 @@ public class DetailView extends BorderPane {
     public void display(CelestialBody body) {
         onRestore.run();
 
-        // Fire first-display hook exactly once
         if (!firstDisplayFired) {
             firstDisplayFired = true;
             onFirstDisplay.run();
         }
 
         try {
-            // Hero image
             ImageView img = new ImageView();
             img.setFitWidth(90); img.setFitHeight(90); img.setPreserveRatio(true);
             try {
@@ -168,7 +155,6 @@ public class DetailView extends BorderPane {
             HBox hero = new HBox(16, imgWrap, heroText);
             hero.setAlignment(Pos.CENTER_LEFT);
 
-            // Stats
             String distStr = body.getDistanceFromSun() == 0
                 ? "Center" : String.format("%.2f AU", body.getDistanceFromSun());
             String tempStr = body.getSurfaceTemperatureMin() == body.getSurfaceTemperatureMax()
@@ -249,6 +235,265 @@ public class DetailView extends BorderPane {
             err.setStyle("-fx-text-fill: red;");
             setCenter(new StackPane(err));
         }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  DISTANCE CALCULATOR
+    // ═══════════════════════════════════════════════════════
+
+    /** Entry point called from MainController via the sidebar button. */
+    public void showDistanceCalculator() {
+        onRestore.run();
+        if (!firstDisplayFired) {
+            firstDisplayFired = true;
+            onFirstDisplay.run();
+        }
+        animateTo(buildDistanceCalculatorPanel());
+    }
+
+    private Node buildDistanceCalculatorPanel() {
+        final double AU_KM        = 149_597_870.7;
+        final double LIGHT_MIN_KM = 17_987_547.48;   // km per light-minute
+        final double EARTH_CIRC   = 40_075.0;
+        final double MOON_DIST    = 384_400.0;
+
+        // ── Title ────────────────────────────────────────
+        Label titleLbl = new Label("⟁  DISTANCE CALCULATOR");
+        titleLbl.setStyle(
+            "-fx-font-size: 20px; -fx-font-weight: bold;" +
+            "-fx-text-fill: " + CYAN + ";" +
+            "-fx-effect: dropshadow(gaussian, " + CYAN + ", 18, 0.45, 0, 0);");
+
+        Label subtitleLbl = new Label(
+            "Select two celestial bodies to measure the distance between them");
+        subtitleLbl.setStyle(
+            "-fx-font-size: 11px; -fx-text-fill: rgba(255,255,255,0.35);");
+        subtitleLbl.setWrapText(true);
+
+        // ── Body selectors ───────────────────────────────
+        ComboBox<CelestialBody> fromBox = buildComboBox();
+        ComboBox<CelestialBody> toBox   = buildComboBox();
+
+        Label fromLbl = calcLabel("FROM");
+        Label toLbl   = calcLabel("TO");
+
+        Button swapBtn = spaceButton("⇅ SWAP", CYAN, "transparent", CYAN_GLOW);
+        swapBtn.setOnAction(e -> {
+            CelestialBody f = fromBox.getValue();
+            fromBox.setValue(toBox.getValue());
+            toBox.setValue(f);
+        });
+
+        GridPane selectGrid = new GridPane();
+        selectGrid.setHgap(10);
+        selectGrid.setVgap(10);
+        ColumnConstraints labelCol = new ColumnConstraints(46);
+        ColumnConstraints dropCol  = new ColumnConstraints();
+        dropCol.setHgrow(Priority.ALWAYS);
+        ColumnConstraints swapCol = new ColumnConstraints(80);
+        swapCol.setHalignment(HPos.CENTER);
+        selectGrid.getColumnConstraints().addAll(labelCol, dropCol, swapCol);
+
+        GridPane.setValignment(swapBtn, javafx.geometry.VPos.CENTER);
+        GridPane.setRowSpan(swapBtn, 2);
+        selectGrid.add(fromLbl, 0, 0);
+        selectGrid.add(fromBox,  1, 0);
+        selectGrid.add(swapBtn,  2, 0);
+        selectGrid.add(toLbl,   0, 1);
+        selectGrid.add(toBox,    1, 1);
+
+        // ── Live result container ────────────────────────
+        VBox resultArea = new VBox(12);
+        resultArea.getChildren().add(calcHintNode());
+
+        // ── Reactive update ──────────────────────────────
+        Runnable update = () -> {
+            resultArea.getChildren().clear();
+
+            CelestialBody from = fromBox.getValue();
+            CelestialBody to   = toBox.getValue();
+
+            if (from == null || to == null) {
+                resultArea.getChildren().add(calcHintNode());
+                return;
+            }
+            if (from.getName().equals(to.getName())) {
+                Label same = new Label("Select two different bodies to calculate a distance.");
+                same.setStyle(
+                    "-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.35);" +
+                    "-fx-padding: 16 0 0 0;");
+                same.setWrapText(true);
+                resultArea.getChildren().add(same);
+                return;
+            }
+
+            double d1 = from.getDistanceFromSun();
+            double d2 = to.getDistanceFromSun();
+            boolean eitherSun = (d1 == 0.0 || d2 == 0.0);
+
+            double minKM, maxKM, refKM;
+            if (eitherSun) {
+                minKM = maxKM = refKM = Math.max(d1, d2) * AU_KM;
+            } else {
+                minKM = Math.abs(d1 - d2) * AU_KM;
+                maxKM = (d1 + d2) * AU_KM;
+                refKM = (minKM + maxKM) / 2.0;
+            }
+
+            // Route header
+            Label routeLbl = new Label(from.getName() + "  →  " + to.getName());
+            routeLbl.setStyle(
+                "-fx-font-size: 13px; -fx-font-weight: bold;" +
+                "-fx-text-fill: rgba(255,255,255,0.70);" +
+                "-fx-letter-spacing: 0.5px;");
+
+            resultArea.getChildren().add(routeLbl);
+            resultArea.getChildren().add(gap(4));
+
+            if (eitherSun) {
+                resultArea.getChildren().add(
+                    distCard("DISTANCE", refKM, LIGHT_MIN_KM, CYAN, CYAN_DIM));
+            } else {
+                resultArea.getChildren().add(
+                    distCard("CLOSEST  (conjunction)", minKM, LIGHT_MIN_KM, CYAN, CYAN_DIM));
+                resultArea.getChildren().add(
+                    distCard("FARTHEST  (opposition)", maxKM, LIGHT_MIN_KM, GOLD, GOLD_DIM));
+                resultArea.getChildren().add(
+                    distCard("AVERAGE DISTANCE", refKM, LIGHT_MIN_KM, PURPLE, PURPLE_DIM));
+            }
+
+            resultArea.getChildren().add(thinDiv());
+            resultArea.getChildren().add(funComparisonsBox(refKM, EARTH_CIRC, MOON_DIST));
+        };
+
+        fromBox.valueProperty().addListener((obs, o, n) -> update.run());
+        toBox.valueProperty().addListener((obs, o, n)   -> update.run());
+
+        // ── Assemble ─────────────────────────────────────
+        VBox content = new VBox(16,
+            titleLbl, subtitleLbl,
+            thinDiv(),
+            selectGrid,
+            thinDiv(),
+            resultArea
+        );
+        content.getStyleClass().add("detail-panel");
+        content.setPadding(new Insets(24, 24, 32, 24));
+
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("detail-scroll");
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        return scroll;
+    }
+
+    /** One distance result card (km + light-minutes). */
+    private VBox distCard(String cardTitle, double km, double lightMinKm,
+                          String accentColor, String bgColor) {
+        double lm = km / lightMinKm;
+
+        Label titleLbl = new Label(cardTitle);
+        titleLbl.setStyle(
+            "-fx-font-size: 9px; -fx-font-weight: bold;" +
+            "-fx-text-fill: " + accentColor + ";" +
+            "-fx-letter-spacing: 1.5px;");
+
+        Label kmLbl = new Label(formatKm(km));
+        kmLbl.setStyle(
+            "-fx-font-size: 22px; -fx-font-weight: bold;" +
+            "-fx-text-fill: " + accentColor + ";" +
+            "-fx-effect: dropshadow(gaussian, " + accentColor + ", 10, 0.30, 0, 0);");
+
+        Label lmLbl = new Label(String.format("%.3f light-minutes", lm));
+        lmLbl.setStyle(
+            "-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.45);");
+
+        VBox card = new VBox(5, titleLbl, kmLbl, lmLbl);
+        card.setPadding(new Insets(14, 16, 14, 16));
+        card.setStyle(
+            "-fx-background-color: " + bgColor + ";" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: " + accentColor.replace(")", ", 0.30)").replace("rgb", "rgba") + ";" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 8;");
+        return card;
+    }
+
+    /** Fun scale comparisons block. */
+    private VBox funComparisonsBox(double km, double earthCirc, double moonDist) {
+        Label header = sectionLabel("Fun comparisons");
+
+        long aroundEarth = Math.round(km / earthCirc);
+        long moonTimes   = Math.round(km / moonDist);
+        double lightSec  = km / 299_792.458;
+
+        String lightStr = lightSec < 60.0
+            ? String.format("Light covers this in %.1f seconds", lightSec)
+            : String.format("Light covers this in %.2f minutes", lightSec / 60.0);
+
+        String[] lines = {
+            String.format("That's %,d× around Earth's equator", aroundEarth),
+            String.format("That's %,d× the Earth–Moon distance", moonTimes),
+            lightStr
+        };
+
+        VBox box = new VBox(8, header, gap(2));
+        for (String line : lines) {
+            Label lbl = new Label("✦  " + line);
+            lbl.setStyle(
+                "-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.62);" +
+                "-fx-padding: 7 12 7 12;" +
+                "-fx-background-color: rgba(255,255,255,0.025);" +
+                "-fx-background-radius: 6;" +
+                "-fx-border-color: rgba(255,255,255,0.06);" +
+                "-fx-border-width: 1;" +
+                "-fx-border-radius: 6;");
+            lbl.setWrapText(true);
+            lbl.setMaxWidth(Double.MAX_VALUE);
+            box.getChildren().add(lbl);
+        }
+        return box;
+    }
+
+    /** Styled ComboBox matching the dark space theme. */
+    private ComboBox<CelestialBody> buildComboBox() {
+        ComboBox<CelestialBody> box = new ComboBox<>();
+        box.getStyleClass().add("dist-combo");
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.setPromptText("Select a body…");
+        if (allBodies != null) box.getItems().addAll(allBodies);
+        return box;
+    }
+
+    /** Dim uppercase label used in the calculator grid. */
+    private Label calcLabel(String text) {
+        Label l = new Label(text);
+        l.setStyle(
+            "-fx-font-size: 10px; -fx-font-weight: bold;" +
+            "-fx-text-fill: rgba(255,255,255,0.35);" +
+            "-fx-letter-spacing: 1px;");
+        l.setAlignment(Pos.CENTER_RIGHT);
+        l.setMaxHeight(Double.MAX_VALUE);
+        return l;
+    }
+
+    /** Placeholder shown before any selection is made. */
+    private Label calcHintNode() {
+        Label l = new Label("← Select two bodies above to calculate the distance between them");
+        l.setStyle(
+            "-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.22);" +
+            "-fx-padding: 24 0 0 0;");
+        l.setWrapText(true);
+        return l;
+    }
+
+    /** Formats a km value with sensible units. */
+    private String formatKm(double km) {
+        if (km >= 1_000_000_000.0)
+            return String.format("%.3f billion km", km / 1_000_000_000.0);
+        if (km >= 1_000_000.0)
+            return String.format("%.3f million km", km / 1_000_000.0);
+        return String.format("%,.0f km", km);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -430,23 +675,7 @@ public class DetailView extends BorderPane {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  COMPARISON VIEW  — uses a single GridPane for perfect row alignment
-    //
-    //  Grid layout:
-    //    column 0         = property label column (fixed 130 px)
-    //    column 1..N      = one column per planet (grow equally)
-    //
-    //  Row layout:
-    //    row 0            = planet headers (image + name + type)
-    //    rows 1..10       = stat rows (fixed height STAT_ROW_H)
-    //    row 11           = "ATMOSPHERE" section banner
-    //    row 12           = atmosphere bar cells (variable height, same per row)
-    //    row 13           = "FEATURES" section banner
-    //    row 14           = features content
-    //    row 15           = "MISSIONS" section banner
-    //    row 16           = missions content
-    //    row 17           = "FUN FACTS" section banner
-    //    row 18           = fun facts content
+    //  COMPARISON VIEW
     // ═══════════════════════════════════════════════════════
     private Node buildComparisonView(List<CelestialBody> bodies, CelestialBody origin) {
 
@@ -458,7 +687,6 @@ public class DetailView extends BorderPane {
         final int N_STATS   = STAT_NAMES.length;
         final int N_PLANETS = bodies.size();
 
-        // ── Pre-compute numeric values for MAX/MIN highlighting ──
         double[][] nums   = new double[N_STATS][N_PLANETS];
         boolean[]  hasNum = new boolean[N_STATS];
         double[]   maxV   = new double[N_STATS];
@@ -479,25 +707,22 @@ public class DetailView extends BorderPane {
             }
         }
 
-        // ── Row indices ──────────────────────────────────────────
         final int ROW_HEADER  = 0;
-        final int ROW_STATS_0 = 1;                          // stats rows: 1..N_STATS
-        final int ROW_ATM_HDR = ROW_STATS_0 + N_STATS;     // atmosphere banner
-        final int ROW_ATM_VAL = ROW_ATM_HDR + 1;           // atmosphere values
-        final int ROW_FEA_HDR = ROW_ATM_VAL + 1;           // features banner
+        final int ROW_STATS_0 = 1;
+        final int ROW_ATM_HDR = ROW_STATS_0 + N_STATS;
+        final int ROW_ATM_VAL = ROW_ATM_HDR + 1;
+        final int ROW_FEA_HDR = ROW_ATM_VAL + 1;
         final int ROW_FEA_VAL = ROW_FEA_HDR + 1;
         final int ROW_MIS_HDR = ROW_FEA_VAL + 1;
         final int ROW_MIS_VAL = ROW_MIS_HDR + 1;
         final int ROW_FAC_HDR = ROW_MIS_VAL + 1;
         final int ROW_FAC_VAL = ROW_FAC_HDR + 1;
 
-        // ── Build the master GridPane ─────────────────────────────
         GridPane grid = new GridPane();
         grid.setHgap(0);
         grid.setVgap(0);
         grid.setMaxWidth(Double.MAX_VALUE);
 
-        // Column constraints: label col fixed, planet cols grow equally
         ColumnConstraints labelCol = new ColumnConstraints();
         labelCol.setPrefWidth(130); labelCol.setMinWidth(110); labelCol.setMaxWidth(150);
         grid.getColumnConstraints().add(labelCol);
@@ -507,7 +732,6 @@ public class DetailView extends BorderPane {
             pc.setHgrow(Priority.ALWAYS);
             pc.setMinWidth(120);
             if (bi < N_PLANETS - 1) {
-                // Add a 1-px divider column after each planet except last
                 grid.getColumnConstraints().add(pc);
                 ColumnConstraints divCol = new ColumnConstraints();
                 divCol.setPrefWidth(1); divCol.setMinWidth(1); divCol.setMaxWidth(1);
@@ -517,17 +741,10 @@ public class DetailView extends BorderPane {
             }
         }
 
-        // Helper: get grid column index for planet bi (accounting for divider cols)
-        // label=0, planet0=1, div=2, planet1=3, div=4, planet2=5 ...
-        // planet bi occupies column: 1 + bi*2
-
-        // ── Row constraints ──────────────────────────────────────
-        // Header row
         RowConstraints headerRC = new RowConstraints();
         headerRC.setMinHeight(170); headerRC.setPrefHeight(170);
         grid.getRowConstraints().add(headerRC);
 
-        // Stat rows — fixed height so they always align
         for (int si = 0; si < N_STATS; si++) {
             RowConstraints rc = new RowConstraints();
             rc.setMinHeight(STAT_ROW_H); rc.setPrefHeight(STAT_ROW_H);
@@ -535,24 +752,18 @@ public class DetailView extends BorderPane {
             grid.getRowConstraints().add(rc);
         }
 
-        // Section banner + value rows (atmosphere, features, missions, facts)
         for (int i = 0; i < 8; i++) {
             RowConstraints rc = new RowConstraints();
-            if (i % 2 == 0) { // banner row
+            if (i % 2 == 0) {
                 rc.setMinHeight(28); rc.setPrefHeight(28); rc.setMaxHeight(28);
-            } else {           // content row
+            } else {
                 rc.setMinHeight(40); rc.setPrefHeight(Region.USE_COMPUTED_SIZE);
             }
             grid.getRowConstraints().add(rc);
         }
 
-        // ── COLUMN 0: label cells ────────────────────────────────
+        grid.add(new Region(), 0, ROW_HEADER);
 
-        // Header spacer (col 0, row 0)
-        Region headerSpacer = new Region();
-        grid.add(headerSpacer, 0, ROW_HEADER);
-
-        // Stat labels
         for (int si = 0; si < N_STATS; si++) {
             Label lbl = new Label(STAT_NAMES[si].toUpperCase());
             lbl.setStyle(
@@ -565,27 +776,23 @@ public class DetailView extends BorderPane {
             grid.add(lbl, 0, ROW_STATS_0 + si);
         }
 
-        // Section banners in label col
         String[] sectionLabels = { "ATMOSPHERE", "FEATURES", "MISSIONS", "FUN FACTS" };
         int[] sectionBannerRows = { ROW_ATM_HDR, ROW_FEA_HDR, ROW_MIS_HDR, ROW_FAC_HDR };
         for (int i = 0; i < sectionLabels.length; i++) {
             grid.add(makeBannerCell(sectionLabels[i]), 0, sectionBannerRows[i]);
         }
-        // Empty content cells in label col (atmosphere / features / missions / facts)
         int[] contentRows = { ROW_ATM_VAL, ROW_FEA_VAL, ROW_MIS_VAL, ROW_FAC_VAL };
         for (int r : contentRows) {
             grid.add(new Region(), 0, r);
         }
 
-        // ── PLANET COLUMNS ───────────────────────────────────────
         for (int bi = 0; bi < N_PLANETS; bi++) {
             CelestialBody body    = bodies.get(bi);
             boolean isOrigin      = body.getName().equals(origin.getName());
             String  glowColor     = isOrigin ? GOLD : CYAN;
             String  glowDim       = isOrigin ? GOLD_DIM : CYAN_DIM;
-            int     gridCol       = 1 + bi * 2; // planet grid column index
+            int     gridCol       = 1 + bi * 2;
 
-            // ── Header ──────────────────────────────────────────
             ImageView iv = new ImageView();
             iv.setFitWidth(72); iv.setFitHeight(72); iv.setPreserveRatio(true);
             try {
@@ -637,7 +844,6 @@ public class DetailView extends BorderPane {
             grid.add(header, gridCol, ROW_HEADER);
             GridPane.setHalignment(header, HPos.CENTER);
 
-            // ── Stat rows ────────────────────────────────────────
             for (int si = 0; si < N_STATS; si++) {
                 String  formatted = statFormatted(STAT_NAMES[si], body);
                 boolean isMax = hasNum[si] && !Double.isNaN(nums[si][bi])
@@ -676,10 +882,8 @@ public class DetailView extends BorderPane {
                 grid.add(cell, gridCol, ROW_STATS_0 + si);
             }
 
-            // ── Atmosphere section banner (empty in planet cols) ──
             grid.add(makeBannerCell(""), gridCol, ROW_ATM_HDR);
 
-            // ── Atmosphere bars ──────────────────────────────────
             VBox atmoCell = new VBox(6);
             atmoCell.setPadding(new Insets(10, 12, 10, 12));
             atmoCell.setMaxWidth(Double.MAX_VALUE);
@@ -726,7 +930,6 @@ public class DetailView extends BorderPane {
             }
             grid.add(atmoCell, gridCol, ROW_ATM_VAL);
 
-            // ── Features ─────────────────────────────────────────
             grid.add(makeBannerCell(""), gridCol, ROW_FEA_HDR);
             VBox featCell = new VBox(4);
             featCell.setPadding(new Insets(10, 12, 10, 12));
@@ -740,7 +943,6 @@ public class DetailView extends BorderPane {
             } else { featCell.getChildren().add(noData()); }
             grid.add(featCell, gridCol, ROW_FEA_VAL);
 
-            // ── Missions ──────────────────────────────────────────
             grid.add(makeBannerCell(""), gridCol, ROW_MIS_HDR);
             VBox missCell = new VBox(4);
             missCell.setPadding(new Insets(10, 12, 10, 12));
@@ -754,7 +956,6 @@ public class DetailView extends BorderPane {
             } else { missCell.getChildren().add(noData()); }
             grid.add(missCell, gridCol, ROW_MIS_VAL);
 
-            // ── Fun facts ─────────────────────────────────────────
             grid.add(makeBannerCell(""), gridCol, ROW_FAC_HDR);
             VBox factCell = new VBox(4);
             factCell.setPadding(new Insets(10, 12, 10, 12));
@@ -768,19 +969,16 @@ public class DetailView extends BorderPane {
             } else { factCell.getChildren().add(noData()); }
             grid.add(factCell, gridCol, ROW_FAC_VAL);
 
-            // ── Vertical divider after each planet except last ────
             if (bi < N_PLANETS - 1) {
                 Region vDiv = new Region();
                 vDiv.setMaxWidth(Double.MAX_VALUE); vDiv.setMaxHeight(Double.MAX_VALUE);
                 vDiv.setStyle("-fx-background-color: " + DIVIDER + ";");
-                // Span all rows
                 int totalRows = ROW_FAC_VAL + 1;
                 GridPane.setRowSpan(vDiv, totalRows);
                 grid.add(vDiv, gridCol + 1, 0);
             }
         }
 
-        // ── Top bar ───────────────────────────────────────────────
         Button backBtn = spaceButton("← BACK TO SELECTION", CYAN, "transparent", CYAN_GLOW);
         backBtn.setOnAction(e -> {
             selectedForComparison.clear();
@@ -808,7 +1006,6 @@ public class DetailView extends BorderPane {
         titleBlock.setAlignment(Pos.CENTER);
         titleBlock.setPadding(new Insets(0, 0, 16, 0));
 
-        // Wrap grid in scroll
         ScrollPane hScroll = new ScrollPane(grid);
         hScroll.setFitToWidth(true);
         hScroll.setFitToHeight(false);
