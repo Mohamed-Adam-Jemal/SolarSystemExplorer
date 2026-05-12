@@ -19,7 +19,7 @@ public class MainController {
     public MainController(MainView mainView, DetailView detailView, List<CelestialBody> loaded) {
         this.mainView   = mainView;
         this.detailView = detailView;
-        
+
         detailView.setAllBodies(loaded);
 
         allBodies = FXCollections.observableArrayList(loaded);
@@ -40,5 +40,11 @@ public class MainController {
                 if (newVal != null) detailView.display(newVal);
             }
         );
+
+        // Distance calculator button
+        mainView.getCalcButton().setOnAction(e -> {
+            mainView.getListView().getSelectionModel().clearSelection();
+            detailView.showDistanceCalculator();
+        });
     }
 }

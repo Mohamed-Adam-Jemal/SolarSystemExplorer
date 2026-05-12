@@ -280,3 +280,79 @@
     -fx-border-color: #1e2245;
     -fx-border-width: 1;
 }
+
+/* ── Distance Calculator ComboBox ────────────────────────
+   Append this block to the bottom of main.css
+   ─────────────────────────────────────────────────────── */
+
+   .dist-combo {
+    -fx-background-color: #1a1c35;
+    -fx-border-color: #2a2d50;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-pref-height: 36px;
+}
+
+.dist-combo:focused,
+.dist-combo:showing {
+    -fx-border-color: #4fc3f7;
+    -fx-background-color: #1e2040;
+}
+
+.dist-combo .list-cell {
+    -fx-text-fill: #c8ccf0;
+    -fx-background-color: transparent;
+    -fx-font-size: 13px;
+    -fx-padding: 4 12 4 12;
+}
+
+.dist-combo .arrow-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.dist-combo .arrow {
+    -fx-background-color: #4fc3f7;
+}
+
+/* Popup list */
+.dist-combo-popup > .list-view {
+    -fx-background-color: #13152b;
+    -fx-border-color: #2a2d50;
+    -fx-border-width: 1;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+.dist-combo-popup > .list-view > .virtual-flow
+    > .clipped-container > .sheet > .list-cell {
+    -fx-text-fill: #c8ccf0;
+    -fx-background-color: #13152b;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 13px;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+.dist-combo-popup > .list-view > .virtual-flow
+    > .clipped-container > .sheet > .list-cell:hover {
+    -fx-background-color: #1e2040;
+    -fx-text-fill: white;
+}
+
+.dist-combo-popup > .list-view > .virtual-flow
+    > .clipped-container > .sheet > .list-cell:filled:selected,
+.dist-combo-popup > .list-view > .virtual-flow
+    > .clipped-container > .sheet > .list-cell:filled:selected:focused {
+    -fx-background-color: #1e2255;
+    -fx-text-fill: #4fc3f7;
+}
+
+.dist-combo-popup > .list-view .scroll-bar:vertical .thumb {
+    -fx-background-color: #2a2d50;
+    -fx-background-radius: 4;
+}
+
+.dist-combo-popup > .list-view .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}

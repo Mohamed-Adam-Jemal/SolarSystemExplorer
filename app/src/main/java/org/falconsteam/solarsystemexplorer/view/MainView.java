@@ -4,6 +4,7 @@ import org.falconsteam.solarsystemexplorer.model.CelestialBody;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -18,8 +19,9 @@ import javafx.scene.layout.VBox;
 
 public class MainView extends BorderPane {
 
-    private final ListView<CelestialBody> listView = new ListView<>();
-    private final TextField searchField = new TextField();
+    private final ListView<CelestialBody> listView    = new ListView<>();
+    private final TextField               searchField = new TextField();
+    private final Button                  calcButton  = new Button("⟁  DISTANCE CALCULATOR");
 
     public MainView() {
         getStyleClass().add("sidebar");
@@ -74,27 +76,58 @@ public class MainView extends BorderPane {
             }
         });
 
+        // ── Distance Calculator button ────────────────────────
+        String btnBase =
+            "-fx-background-color: rgba(79,195,247,0.08);" +
+            "-fx-text-fill: #4fc3f7;" +
+            "-fx-font-size: 11px; -fx-font-weight: bold;" +
+            "-fx-padding: 10 14 10 14;" +
+            "-fx-background-radius: 6;" +
+            "-fx-border-color: rgba(79,195,247,0.30);" +
+            "-fx-border-width: 1; -fx-border-radius: 6;" +
+            "-fx-cursor: hand; -fx-letter-spacing: 0.8px;" +
+            "-fx-effect: dropshadow(gaussian, rgba(79,195,247,0.25), 8, 0.30, 0, 0);" +
+            "-fx-alignment: CENTER;";
+        String btnHover =
+            "-fx-background-color: rgba(79,195,247,0.16);" +
+            "-fx-text-fill: #4fc3f7;" +
+            "-fx-font-size: 11px; -fx-font-weight: bold;" +
+            "-fx-padding: 10 14 10 14;" +
+            "-fx-background-radius: 6;" +
+            "-fx-border-color: rgba(79,195,247,0.70);" +
+            "-fx-border-width: 1; -fx-border-radius: 6;" +
+            "-fx-cursor: hand; -fx-letter-spacing: 0.8px;" +
+            "-fx-effect: dropshadow(gaussian, rgba(79,195,247,0.50), 14, 0.45, 0, 0);" +
+            "-fx-alignment: CENTER;";
+        calcButton.setMaxWidth(Double.MAX_VALUE);
+        calcButton.setStyle(btnBase);
+        calcButton.setOnMouseEntered(e -> calcButton.setStyle(btnHover));
+        calcButton.setOnMouseExited(e  -> calcButton.setStyle(btnBase));
+
+        HBox calcWrap = new HBox(calcButton);
+        calcWrap.setPadding(new Insets(8, 14, 14, 14));
+        HBox.setHgrow(calcButton, Priority.ALWAYS);
+
+        // ── Layout ────────────────────────────────────────────
         VBox top = new VBox(header, searchWrap, section);
         top.getStyleClass().add("sidebar");
         setTop(top);
         setCenter(listView);
+        setBottom(calcWrap);
         setPrefWidth(240);
         VBox.setVgrow(listView, Priority.ALWAYS);
     }
 
     private HBox buildCard(CelestialBody item, boolean selected) {
-        // ── Image ────────────────────────────────────────────
         ImageView img = new ImageView();
         img.setFitWidth(34);
         img.setFitHeight(34);
-        img.setPreserveRatio(true);    // respect natural ratio — fixes Saturn distortion
+        img.setPreserveRatio(true);
         try {
             Image image = PlanetAssets.loadImage(item.getName(), 44, 44);
             if (image != null) img.setImage(image);
         } catch (Exception ignored) {}
-        // No circle clip — irregular shapes like Saturn need room to breathe
 
-        // Fixed container keeps all cards the same height regardless of image shape
         StackPane imgWrap = new StackPane(img);
         imgWrap.setMinSize(44, 44);
         imgWrap.setMaxSize(44, 44);
@@ -102,18 +135,15 @@ public class MainView extends BorderPane {
         imgWrap.setStyle("-fx-background-color: transparent;");
         imgWrap.setAlignment(Pos.CENTER);
 
-        // ── Name ─────────────────────────────────────────────
         Label name = new Label(item.getName());
         name.getStyleClass().add(selected ? "card-name-selected" : "card-name");
 
-        // ── Badge ─────────────────────────────────────────────
         Label badge = new Label(item.getType());
         badge.getStyleClass().addAll("badge", PlanetAssets.getBadgeClass(item));
 
         VBox info = new VBox(4, name, badge);
         info.setAlignment(Pos.CENTER_LEFT);
 
-        // ── Card ──────────────────────────────────────────────
         HBox card = new HBox(12, imgWrap, info);
         card.setAlignment(Pos.CENTER_LEFT);
         card.setMaxWidth(Double.MAX_VALUE);
@@ -122,6 +152,7 @@ public class MainView extends BorderPane {
         return card;
     }
 
-    public ListView<CelestialBody> getListView() { return listView; }
-    public TextField getSearchField()            { return searchField; }
+    public ListView<CelestialBody> getListView()  { return listView; }
+    public TextField               getSearchField() { return searchField; }
+    public Button                  getCalcButton() { return calcButton; }
 }
