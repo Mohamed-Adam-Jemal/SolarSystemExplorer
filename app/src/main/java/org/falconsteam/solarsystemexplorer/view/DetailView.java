@@ -10,7 +10,6 @@ import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
 import javafx.animation.ParallelTransition;
 import javafx.animation.RotateTransition;
 import javafx.animation.ScaleTransition;
@@ -57,6 +56,7 @@ public class DetailView extends BorderPane {
     private Runnable onFirstDisplay = () -> {};
     private boolean firstDisplayFired = false;
 
+    private Runnable onClose   = () -> {};
     private Runnable onExpand  = () -> {};
     private Runnable onRestore = () -> {};
 
@@ -95,9 +95,53 @@ public class DetailView extends BorderPane {
         this.onFirstDisplay = r != null ? r : () -> {};
     }
 
+    public void setOnClose(Runnable r) {
+        this.onClose = r != null ? r : () -> {};
+    }
+
+    public void resetFirstDisplay() {
+        firstDisplayFired = false;
+        setCenter(null);
+    }
+
     public void setOnWidthChangeRequest(Runnable expand, Runnable restore) {
         this.onExpand  = expand  != null ? expand  : () -> {};
         this.onRestore = restore != null ? restore : () -> {};
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  CLOSE BAR  (top-right ✕ button, shown in all modes)
+    // ═══════════════════════════════════════════════════════
+    private HBox buildTopBar() {
+        Button closeBtn = new Button("✕");
+        String base =
+            "-fx-background-color: rgba(255,255,255,0.06);" +
+            "-fx-text-fill: rgba(255,255,255,0.45);" +
+            "-fx-font-size: 13px; -fx-font-weight: bold;" +
+            "-fx-padding: 4 10 4 10; -fx-background-radius: 6;" +
+            "-fx-border-color: rgba(255,255,255,0.10);" +
+            "-fx-border-width: 1; -fx-border-radius: 6;" +
+            "-fx-cursor: hand;";
+        String hover =
+            "-fx-background-color: rgba(239,100,100,0.18);" +
+            "-fx-text-fill: rgba(239,154,154,0.95);" +
+            "-fx-font-size: 13px; -fx-font-weight: bold;" +
+            "-fx-padding: 4 10 4 10; -fx-background-radius: 6;" +
+            "-fx-border-color: rgba(239,154,154,0.45);" +
+            "-fx-border-width: 1; -fx-border-radius: 6;" +
+            "-fx-cursor: hand;";
+        closeBtn.setStyle(base);
+        closeBtn.setOnMouseEntered(e -> closeBtn.setStyle(hover));
+        closeBtn.setOnMouseExited(e  -> closeBtn.setStyle(base));
+        closeBtn.setOnAction(e -> onClose.run());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox bar = new HBox(spacer, closeBtn);
+        bar.setAlignment(Pos.CENTER_RIGHT);
+        bar.setPadding(new Insets(10, 14, 0, 14));
+        return bar;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -210,6 +254,7 @@ public class DetailView extends BorderPane {
                 }
 
             VBox content = new VBox(18,
+                buildTopBar(),
                 hero, thinDiv(),
                 sectionLabel("Stats"),                statsGrid,  thinDiv(),
                 sectionLabel("Atmosphere"),           atmoBox,    thinDiv(),
@@ -241,6 +286,92 @@ public class DetailView extends BorderPane {
     //  DISTANCE CALCULATOR
     // ═══════════════════════════════════════════════════════
 
+    /**
+     * Entry point called from the sidebar "INITIATE COMPARISON" button.
+     * Opens the selector panel with no pre-selected reference planet —
+     * the first body the user taps becomes the reference.
+     */
+    public void showCompareSelector() {
+        onRestore.run();
+        if (!firstDisplayFired) {
+            firstDisplayFired = true;
+            onFirstDisplay.run();
+        }
+        animateTo(buildSelectorPanelNoOrigin());
+    }
+
+    /**
+     * Selector panel variant where no origin planet is pre-chosen.
+     * The user picks any two or more bodies; the first selected becomes the reference.
+     */
+    private Node buildSelectorPanelNoOrigin() {
+        selectedForComparison.clear();
+
+        Label title = new Label("SELECT PLANETS TO COMPARE");
+        title.setStyle(
+            "-fx-font-size: 13px; -fx-font-weight: bold;" +
+            "-fx-text-fill: " + CYAN + "; -fx-letter-spacing: 2px;");
+
+        Label subtitle = new Label("First selection becomes your reference planet");
+        subtitle.setStyle(
+            "-fx-font-size: 10px; -fx-text-fill: rgba(255,255,255,0.38);");
+
+        Label statusLbl = new Label("0 selected");
+        statusLbl.setStyle(
+            "-fx-font-size: 11px; -fx-text-fill: " + GOLD + "; -fx-font-weight: bold;");
+
+        Button launchBtn = spaceButton("⬡  LAUNCH COMPARISON", GOLD, GOLD_DIM, GOLD_GLOW);
+        launchBtn.setMaxWidth(Double.MAX_VALUE);
+        launchBtn.setDisable(true);
+
+        VBox listItems = new VBox(7);
+        listItems.setPadding(new Insets(4, 2, 4, 2));
+        List<HBox> cardNodes = new ArrayList<>();
+
+        if (allBodies != null) {
+            for (CelestialBody body : allBodies) {
+                HBox card = buildSelectorCard(body, cardNodes, statusLbl, launchBtn, 2, 0);
+                cardNodes.add(card);
+                listItems.getChildren().add(card);
+            }
+        }
+
+        launchBtn.setOnAction(e -> {
+            if (selectedForComparison.size() >= 2) {
+                CelestialBody origin = selectedForComparison.get(0);
+                animateToComparison(buildComparisonView(
+                    new ArrayList<>(selectedForComparison), origin));
+            }
+        });
+
+        ScrollPane listScroll = new ScrollPane(listItems);
+        listScroll.setFitToWidth(true);
+        listScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        listScroll.setStyle(
+            "-fx-background: transparent; -fx-background-color: transparent;" +
+            "-fx-border-color: transparent;");
+        VBox.setVgrow(listScroll, Priority.ALWAYS);
+
+        HBox statusRow = new HBox(statusLbl);
+        statusRow.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox content = new VBox(12,
+            buildTopBar(), thinDiv(),
+            title, subtitle,
+            gap(4), statusRow,
+            listScroll,
+            thinDiv(), launchBtn
+        );
+        content.getStyleClass().add("detail-panel");
+        content.setPadding(new Insets(18));
+
+        ScrollPane outer = new ScrollPane(content);
+        outer.setFitToWidth(true);
+        outer.setFitToHeight(true);
+        outer.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        return outer;
+    }
+
     /** Entry point called from MainController via the sidebar button. */
     public void showDistanceCalculator() {
         onRestore.run();
@@ -253,7 +384,7 @@ public class DetailView extends BorderPane {
 
     private Node buildDistanceCalculatorPanel() {
         final double AU_KM        = 149_597_870.7;
-        final double LIGHT_MIN_KM = 17_987_547.48;   // km per light-minute
+        final double LIGHT_MIN_KM = 17_987_547.48;
         final double EARTH_CIRC   = 40_075.0;
         final double MOON_DIST    = 384_400.0;
 
@@ -340,7 +471,6 @@ public class DetailView extends BorderPane {
                 refKM = (minKM + maxKM) / 2.0;
             }
 
-            // Route header
             Label routeLbl = new Label(from.getName() + "  →  " + to.getName());
             routeLbl.setStyle(
                 "-fx-font-size: 13px; -fx-font-weight: bold;" +
@@ -371,6 +501,7 @@ public class DetailView extends BorderPane {
 
         // ── Assemble ─────────────────────────────────────
         VBox content = new VBox(16,
+            buildTopBar(),
             titleLbl, subtitleLbl,
             thinDiv(),
             selectGrid,
@@ -378,7 +509,7 @@ public class DetailView extends BorderPane {
             resultArea
         );
         content.getStyleClass().add("detail-panel");
-        content.setPadding(new Insets(24, 24, 32, 24));
+        content.setPadding(new Insets(0, 24, 32, 24));
 
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
@@ -578,6 +709,21 @@ public class DetailView extends BorderPane {
             List<HBox> cardNodes,
             Label statusLbl,
             Button launchBtn) {
+        return buildSelectorCard(body, cardNodes, statusLbl, launchBtn, 1, 1);
+    }
+
+    /**
+     * @param minRequired  minimum selections before launch is enabled
+     * @param countOffset  added to n in the "COMPARE X PLANETS" label
+     *                     (1 when an origin is pre-selected, 0 when picking freely)
+     */
+    private HBox buildSelectorCard(
+            CelestialBody body,
+            List<HBox> cardNodes,
+            Label statusLbl,
+            Button launchBtn,
+            int minRequired,
+            int countOffset) {
 
         ImageView iv = new ImageView();
         iv.setFitWidth(40); iv.setFitHeight(40); iv.setPreserveRatio(true);
@@ -649,10 +795,10 @@ public class DetailView extends BorderPane {
             statusLbl.setText(n == 0
                 ? "0 selected"
                 : n + " planet" + (n > 1 ? "s" : "") + " selected");
-            launchBtn.setDisable(n < 1);
-            launchBtn.setText(n < 1
+            launchBtn.setDisable(n < minRequired);
+            launchBtn.setText(n < minRequired
                 ? "⬡  LAUNCH COMPARISON"
-                : "⬡  COMPARE " + (n + 1) + " PLANETS  →");
+                : "⬡  COMPARE " + (n + countOffset) + " PLANETS  →");
         });
 
         return card;

@@ -19,9 +19,10 @@ import javafx.scene.layout.VBox;
 
 public class MainView extends BorderPane {
 
-    private final ListView<CelestialBody> listView    = new ListView<>();
-    private final TextField               searchField = new TextField();
-    private final Button                  calcButton  = new Button("⟁  DISTANCE CALCULATOR");
+    private final ListView<CelestialBody> listView       = new ListView<>();
+    private final TextField               searchField    = new TextField();
+    private final Button                  calcButton     = new Button("⟁  DISTANCE CALCULATOR");
+    private final Button                  compareButton  = new Button("⬡  INITIATE COMPARISON");
 
     public MainView() {
         getStyleClass().add("sidebar");
@@ -76,8 +77,37 @@ public class MainView extends BorderPane {
             }
         });
 
-        // ── Distance Calculator button ────────────────────────
-        String btnBase =
+        // ── Shared button style builder ───────────────────────
+        // Compare button — gold accent
+        String compareBase =
+            "-fx-background-color: rgba(255,213,79,0.08);" +
+            "-fx-text-fill: #ffd54f;" +
+            "-fx-font-size: 11px; -fx-font-weight: bold;" +
+            "-fx-padding: 10 14 10 14;" +
+            "-fx-background-radius: 6;" +
+            "-fx-border-color: rgba(255,213,79,0.30);" +
+            "-fx-border-width: 1; -fx-border-radius: 6;" +
+            "-fx-cursor: hand; -fx-letter-spacing: 0.8px;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,213,79,0.25), 8, 0.30, 0, 0);" +
+            "-fx-alignment: CENTER;";
+        String compareHover =
+            "-fx-background-color: rgba(255,213,79,0.16);" +
+            "-fx-text-fill: #ffd54f;" +
+            "-fx-font-size: 11px; -fx-font-weight: bold;" +
+            "-fx-padding: 10 14 10 14;" +
+            "-fx-background-radius: 6;" +
+            "-fx-border-color: rgba(255,213,79,0.70);" +
+            "-fx-border-width: 1; -fx-border-radius: 6;" +
+            "-fx-cursor: hand; -fx-letter-spacing: 0.8px;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,213,79,0.50), 14, 0.45, 0, 0);" +
+            "-fx-alignment: CENTER;";
+        compareButton.setMaxWidth(Double.MAX_VALUE);
+        compareButton.setStyle(compareBase);
+        compareButton.setOnMouseEntered(e -> compareButton.setStyle(compareHover));
+        compareButton.setOnMouseExited(e  -> compareButton.setStyle(compareBase));
+
+        // Distance Calculator button — cyan accent
+        String calcBase =
             "-fx-background-color: rgba(79,195,247,0.08);" +
             "-fx-text-fill: #4fc3f7;" +
             "-fx-font-size: 11px; -fx-font-weight: bold;" +
@@ -88,7 +118,7 @@ public class MainView extends BorderPane {
             "-fx-cursor: hand; -fx-letter-spacing: 0.8px;" +
             "-fx-effect: dropshadow(gaussian, rgba(79,195,247,0.25), 8, 0.30, 0, 0);" +
             "-fx-alignment: CENTER;";
-        String btnHover =
+        String calcHover =
             "-fx-background-color: rgba(79,195,247,0.16);" +
             "-fx-text-fill: #4fc3f7;" +
             "-fx-font-size: 11px; -fx-font-weight: bold;" +
@@ -100,21 +130,21 @@ public class MainView extends BorderPane {
             "-fx-effect: dropshadow(gaussian, rgba(79,195,247,0.50), 14, 0.45, 0, 0);" +
             "-fx-alignment: CENTER;";
         calcButton.setMaxWidth(Double.MAX_VALUE);
-        calcButton.setStyle(btnBase);
-        calcButton.setOnMouseEntered(e -> calcButton.setStyle(btnHover));
-        calcButton.setOnMouseExited(e  -> calcButton.setStyle(btnBase));
+        calcButton.setStyle(calcBase);
+        calcButton.setOnMouseEntered(e -> calcButton.setStyle(calcHover));
+        calcButton.setOnMouseExited(e  -> calcButton.setStyle(calcBase));
 
-        HBox calcWrap = new HBox(calcButton);
-        calcWrap.setPadding(new Insets(8, 14, 14, 14));
-        HBox.setHgrow(calcButton, Priority.ALWAYS);
+        // ── Bottom action buttons ─────────────────────────────
+        VBox bottomButtons = new VBox(6, compareButton, calcButton);
+        bottomButtons.setPadding(new Insets(8, 14, 14, 14));
 
         // ── Layout ────────────────────────────────────────────
         VBox top = new VBox(header, searchWrap, section);
         top.getStyleClass().add("sidebar");
         setTop(top);
         setCenter(listView);
-        setBottom(calcWrap);
-        setPrefWidth(240);
+        setBottom(bottomButtons);
+        setPrefWidth(220);
         VBox.setVgrow(listView, Priority.ALWAYS);
     }
 
@@ -152,7 +182,8 @@ public class MainView extends BorderPane {
         return card;
     }
 
-    public ListView<CelestialBody> getListView()  { return listView; }
-    public TextField               getSearchField() { return searchField; }
-    public Button                  getCalcButton() { return calcButton; }
+    public ListView<CelestialBody> getListView()     { return listView; }
+    public TextField               getSearchField()  { return searchField; }
+    public Button                  getCalcButton()   { return calcButton; }
+    public Button                  getCompareButton(){ return compareButton; }
 }
