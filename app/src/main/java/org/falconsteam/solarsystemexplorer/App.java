@@ -25,58 +25,106 @@ import javafx.util.Duration;
 
 public class App extends Application {
 
+    // ── Layout constants ─────────────────────────────────────────
+    // Two-panel state (no detail): sidebar | orbit
+    private static final double DIV_SIDEBAR_2P    = 0.18;
+
+    // Three-panel state (detail open): sidebar | orbit | detail
+    private static final double DIV_SIDEBAR_3P    = 0.15;
+    private static final double DIV_DETAIL_3P     = 0.62;
+
+    // Three-panel state during comparison (detail wider)
+    private static final double DIV_DETAIL_EXPAND = 0.28;
+
     @Override
     public void start(Stage stage) {
-
         MainView mainView = new MainView();
-
         Pane overlay = new Pane();
         overlay.setPickOnBounds(false);
-
         DetailView detailView = new DetailView(overlay);
-
         OrbitAnimationPane orbitPane = new OrbitAnimationPane();
 
         List<CelestialBody> bodies = new PlanetDataLoader().loadAll();
-
         MainController controller = new MainController(mainView, detailView, bodies);
         orbitPane.init(bodies);
 
-        // ── SplitPane : mainView | orbitPane | detailView ──
-        SplitPane split = new SplitPane(mainView, orbitPane, detailView);
-        split.setDividerPositions(0.22, 0.65);
+        // ── Start with only 2 panels: sidebar | orbit ────────────
+        SplitPane split = new SplitPane(mainView, orbitPane);
+        split.setDividerPositions(DIV_SIDEBAR_2P);
 
-        // ── Wire expand/restore on the correct variable: split ──
+        // ── First selection → slide detail panel in from the right ──
+        detailView.setOnFirstDisplay(() -> {
+            if (!split.getItems().contains(detailView)) {
+                split.getItems().add(detailView);
+                // Park divider 1 at far right so it slides in visually
+                split.getDividers().get(1).setPosition(1.0);
+                Timeline slideIn = new Timeline(
+                    new KeyFrame(Duration.millis(400),
+                        new KeyValue(split.getDividers().get(0).positionProperty(),
+                            DIV_SIDEBAR_3P, Interpolator.EASE_BOTH),
+                        new KeyValue(split.getDividers().get(1).positionProperty(),
+                            DIV_DETAIL_3P, Interpolator.EASE_BOTH)
+                    )
+                );
+                slideIn.play();
+            }
+        });
+
+        // ── Close button → slide detail panel back out ────────────
+        detailView.setOnClose(() -> {
+            if (split.getItems().contains(detailView)) {
+                Timeline slideOut = new Timeline(
+                    new KeyFrame(Duration.millis(350),
+                        new KeyValue(split.getDividers().get(0).positionProperty(),
+                            DIV_SIDEBAR_2P, Interpolator.EASE_BOTH),
+                        new KeyValue(split.getDividers().get(1).positionProperty(),
+                            1.0, Interpolator.EASE_BOTH)
+                    )
+                );
+                slideOut.setOnFinished(ev -> {
+                    split.getItems().remove(detailView);
+                    split.setDividerPositions(DIV_SIDEBAR_2P);
+                    detailView.resetFirstDisplay();
+                    mainView.getListView().getSelectionModel().clearSelection();
+                });
+                slideOut.play();
+            }
+        });
+
+        // ── Expand (comparison) / restore (back to detail) ───────
         detailView.setOnWidthChangeRequest(
-            // onExpand — comparison opens → detail gets wider
+            // onExpand — comparison panel → give detail more room
             () -> {
                 Timeline expand = new Timeline(
                     new KeyFrame(Duration.millis(420),
-                        new KeyValue(
-                            split.getDividers().get(1).positionProperty(),
-                            0.30,               // divider 2 moves LEFT → detail wider
-                            Interpolator.EASE_BOTH))
+                        new KeyValue(split.getDividers().get(1).positionProperty(),
+                            DIV_DETAIL_EXPAND, Interpolator.EASE_BOTH))
                 );
                 expand.play();
             },
-            // onRestore — back to detail/selector → normal width
+            // onRestore — back to detail/selector → normal layout
             () -> {
-                Timeline restore = new Timeline(
-                    new KeyFrame(Duration.millis(380),
-                        new KeyValue(
-                            split.getDividers().get(1).positionProperty(),
-                            0.65,               // divider 2 back to original position
-                            Interpolator.EASE_BOTH))
-                );
-                restore.play();
+                if (split.getDividers().size() > 1) {
+                    Timeline restore = new Timeline(
+                        new KeyFrame(Duration.millis(380),
+                            new KeyValue(split.getDividers().get(1).positionProperty(),
+                                DIV_DETAIL_3P, Interpolator.EASE_BOTH))
+                    );
+                    restore.play();
+                }
             }
         );
+
+        // ── Sidebar compare button → open selector in detail panel ──
+        mainView.getCompareButton().setOnAction(e -> {
+            mainView.getListView().getSelectionModel().clearSelection();
+            detailView.showCompareSelector();
+        });
 
         StackPane root = new StackPane();
         root.getChildren().addAll(split, overlay);
 
         Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
-
         Scene scene = new Scene(root, screenBounds.getWidth(), screenBounds.getHeight());
         scene.getStylesheets().add(
             getClass().getResource("/styles/main.css").toExternalForm()
