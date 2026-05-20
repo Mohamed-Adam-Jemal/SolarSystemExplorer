@@ -383,17 +383,16 @@ public class DetailView extends BorderPane {
     }
 
     private Node buildDistanceCalculatorPanel() {
-        final double AU_KM        = 149_597_870.7;
-        final double LIGHT_MIN_KM = 17_987_547.48;
-        final double EARTH_CIRC   = 40_075.0;
-        final double MOON_DIST    = 384_400.0;
+        final double AU_KM         = 149_597_870.7;
+        final double LIGHT_YEAR_KM = 9.461e12;
+        final double EARTH_CIRC    = 40_075.0;
+        final double MOON_DIST     = 384_400.0;
 
-        // ── Title ────────────────────────────────────────
+        // ── Title + close ──────────────────────────────────
         Label titleLbl = new Label("⟁  DISTANCE CALCULATOR");
         titleLbl.setStyle(
             "-fx-font-size: 20px; -fx-font-weight: bold;" +
-            "-fx-text-fill: " + CYAN + ";" +
-            "-fx-effect: dropshadow(gaussian, " + CYAN + ", 18, 0.45, 0, 0);");
+            "-fx-text-fill: " + CYAN + ";");
 
         Label subtitleLbl = new Label(
             "Select two celestial bodies to measure the distance between them");
@@ -482,14 +481,14 @@ public class DetailView extends BorderPane {
 
             if (eitherSun) {
                 resultArea.getChildren().add(
-                    distCard("DISTANCE", refKM, LIGHT_MIN_KM, CYAN, CYAN_DIM));
+                    distCard("DISTANCE", refKM, LIGHT_YEAR_KM, CYAN, CYAN_DIM));
             } else {
                 resultArea.getChildren().add(
-                    distCard("CLOSEST  (conjunction)", minKM, LIGHT_MIN_KM, CYAN, CYAN_DIM));
+                    distCard("CLOSEST  (conjunction)", minKM, LIGHT_YEAR_KM, CYAN, CYAN_DIM));
                 resultArea.getChildren().add(
-                    distCard("FARTHEST  (opposition)", maxKM, LIGHT_MIN_KM, GOLD, GOLD_DIM));
+                    distCard("FARTHEST  (opposition)", maxKM, LIGHT_YEAR_KM, GOLD, GOLD_DIM));
                 resultArea.getChildren().add(
-                    distCard("AVERAGE DISTANCE", refKM, LIGHT_MIN_KM, PURPLE, PURPLE_DIM));
+                    distCard("AVERAGE DISTANCE", refKM, LIGHT_YEAR_KM, PURPLE, PURPLE_DIM));
             }
 
             resultArea.getChildren().add(thinDiv());
@@ -518,10 +517,10 @@ public class DetailView extends BorderPane {
         return scroll;
     }
 
-    /** One distance result card (km + light-minutes). */
-    private VBox distCard(String cardTitle, double km, double lightMinKm,
+    /** One distance result card (km + light-years). */
+    private VBox distCard(String cardTitle, double km, double lightYearKm,
                           String accentColor, String bgColor) {
-        double lm = km / lightMinKm;
+        double ly = km / lightYearKm;
 
         Label titleLbl = new Label(cardTitle);
         titleLbl.setStyle(
@@ -532,14 +531,13 @@ public class DetailView extends BorderPane {
         Label kmLbl = new Label(formatKm(km));
         kmLbl.setStyle(
             "-fx-font-size: 22px; -fx-font-weight: bold;" +
-            "-fx-text-fill: " + accentColor + ";" +
-            "-fx-effect: dropshadow(gaussian, " + accentColor + ", 10, 0.30, 0, 0);");
+            "-fx-text-fill: " + accentColor + ";");
 
-        Label lmLbl = new Label(String.format("%.3f light-minutes", lm));
-        lmLbl.setStyle(
+        Label lyLbl = new Label(String.format("%.9f light-years", ly));
+        lyLbl.setStyle(
             "-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.45);");
 
-        VBox card = new VBox(5, titleLbl, kmLbl, lmLbl);
+        VBox card = new VBox(5, titleLbl, kmLbl, lyLbl);
         card.setPadding(new Insets(14, 16, 14, 16));
         card.setStyle(
             "-fx-background-color: " + bgColor + ";" +
