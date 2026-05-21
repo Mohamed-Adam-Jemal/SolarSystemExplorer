@@ -407,7 +407,7 @@ public class DetailView extends BorderPane {
         Label fromLbl = calcLabel("FROM");
         Label toLbl   = calcLabel("TO");
 
-        Button swapBtn = spaceButton("⇅ SWAP", CYAN, "transparent", CYAN_GLOW);
+        Button swapBtn = spaceButton("⇅", CYAN, "transparent", CYAN_GLOW);
         swapBtn.setOnAction(e -> {
             CelestialBody f = fromBox.getValue();
             fromBox.setValue(toBox.getValue());
